@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Governing Body | Admin - De Nobili School</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="sidebar"></aside>
+        <main class="admin-main">
+            <div class="admin-topbar"><h1>Governing Body</h1><a href="../index.html" target="_blank" class="view-site">View Public Site &rarr;</a><a href="#" onclick="AdminStore.logout();return false;" style="font-size:0.75rem;background:#fef2f2;color:#ef4444;padding:0.375rem 0.75rem;border-radius:9999px;text-decoration:none;font-weight:500;margin-left:0.5rem;transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+            <div class="admin-content">
+                <div class="a-info blue"><i class="fas fa-users" style="margin-top:0.125rem;flex-shrink:0;"></i><div><p style="font-size:0.8rem;">Manage members of the Governing Body. These appear on the "Governing Body" page of the public website.</p></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+                    <span style="font-size:0.85rem;color:#64748b;" id="count"></span>
+                    <button class="a-btn a-btn-primary" onclick="openForm()"><i class="fas fa-plus"></i> Add Member</button>
+                </div>
+                <div id="grid"></div>
+            </div>
+        </main>
+    </div>
+    <div class="admin-modal-backdrop" id="modal">
+        <div class="admin-modal" style="max-width:440px;">
+            <h3 id="modal-title">Add Member</h3>
+            <form id="member-form">
+                <input type="hidden" id="f-id">
+                <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+                    <div id="photo-preview" style="width:64px;height:64px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;"><i class="fas fa-user" style="font-size:1.5rem;color:#3b82f6;"></i></div>
+                    <div><label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:0.25rem;">Photo</label><input type="file" accept="image/*" id="f-photo-file" style="font-size:0.75rem;"></div>
+                </div>
+                <input type="hidden" id="f-photo" value="">
+                <div class="a-form-group"><label>Name *</label><input type="text" class="a-input" id="f-name" required placeholder="e.g. Fr. Provincial"></div>
+                <div class="a-form-group"><label>Role / Position *</label><input type="text" class="a-input" id="f-role" required placeholder="e.g. Chairman"></div>
+                <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+                    <button type="button" class="a-btn a-btn-outline" style="flex:1;justify-content:center;" onclick="closeForm()">Cancel</button>
+                    <button type="submit" class="a-btn a-btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="admin-store.js"></script>
+    <script>
+        AdminStore.checkAuth();
+        document.getElementById('sidebar').innerHTML = renderAdminSidebar('governing');
+
+        document.getElementById('f-photo-file').addEventListener('change', function() {
+            fileToDataURL(this, url => {
+                document.getElementById('f-photo').value = url;
+                document.getElementById('photo-preview').innerHTML = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;">';
+            });
+        });
+
+        function openForm(id) {
+            document.getElementById('modal').classList.add('active');
+            if (id) {
+                const m = AdminStore.getGoverning().find(x => x.id === id);
+                if (!m) return;
+                document.getElementById('modal-title').textContent = 'Edit Member';
+                document.getElementById('f-id').value = m.id;
+                document.getElementById('f-name').value = m.name;
+                document.getElementById('f-role').value = m.role;
+                document.getElementById('f-photo').value = m.photo || '';
+                if (m.photo) document.getElementById('photo-preview').innerHTML = '<img src="' + m.photo + '" style="width:100%;height:100%;object-fit:cover;">';
+            } else {
+                document.getElementById('modal-title').textContent = 'Add Member';
+                document.getElementById('member-form').reset();
+                document.getElementById('f-id').value = '';
+                document.getElementById('f-photo').value = '';
+                document.getElementById('photo-preview').innerHTML = '<i class="fas fa-user" style="font-size:1.5rem;color:#3b82f6;"></i>';
+            }
+        }
+        function closeForm() { document.getElementById('modal').classList.remove('active'); }
+
+        document.getElementById('member-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const data = AdminStore.getGoverning();
+            const editId = document.getElementById('f-id').value;
+            const item = { id: editId || AdminStore.genId(), name: document.getElementById('f-name').value, role: document.getElementById('f-role').value, photo: document.getElementById('f-photo').value };
+            if (editId) { const idx = data.findIndex(x => x.id === editId); if (idx !== -1) data[idx] = item; }
+            else { data.push(item); }
+            AdminStore.saveGoverning(data); closeForm(); render(); showToast(editId ? 'Member updated' : 'Member added');
+        });
+
+        function deleteItem(id) {
+            if (!confirm('Delete this member?')) return;
+            AdminStore.saveGoverning(AdminStore.getGoverning().filter(x => x.id !== id));
+            render(); showToast('Member deleted');
+        }
+
+        function render() {
+            const data = AdminStore.getGoverning();
+            document.getElementById('count').textContent = data.length + ' member(s)';
+            const grid = document.getElementById('grid');
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="a-empty"><i class="fas fa-users"></i><p>No governing body members yet.</p></div>';
+                return;
+            }
+            grid.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">' + data.map(m =>
+                '<div class="a-card" style="padding:1.5rem;text-align:center;position:relative;">' +
+                '<div style="position:absolute;top:0.75rem;right:0.75rem;display:flex;gap:0.25rem;">' +
+                '<button class="a-btn-icon edit" onclick="openForm(\'' + m.id + '\')"><i class="fas fa-edit"></i></button>' +
+                '<button class="a-btn-icon delete" onclick="deleteItem(\'' + m.id + '\')"><i class="fas fa-trash"></i></button></div>' +
+                '<div style="width:64px;height:64px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;overflow:hidden;">' +
+                (m.photo ? '<img src="' + m.photo + '" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fas fa-user" style="font-size:1.5rem;color:#3b82f6;"></i>') + '</div>' +
+                '<h4 style="font-size:0.9rem;font-weight:600;">' + m.name + '</h4>' +
+                '<p style="font-size:0.8rem;color:#3b82f6;margin-top:0.25rem;">' + m.role + '</p></div>'
+            ).join('') + '</div>';
+        }
+        render();
+    </script>
+</body>
+</html>

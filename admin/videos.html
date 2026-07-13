@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Gallery | Admin - De Nobili School</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .video-upload-zone{border:2px dashed #cbd5e1;border-radius:0.75rem;padding:1.5rem;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc;}
+        .video-upload-zone:hover,.video-upload-zone.dragover{border-color:#7c3aed;background:#faf5ff;}
+        .video-upload-zone i{font-size:1.75rem;color:#94a3b8;margin-bottom:0.5rem;}
+        .thumb-preview{display:flex;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap;}
+        .thumb-option{width:120px;aspect-ratio:16/9;border-radius:0.375rem;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all 0.2s;position:relative;}
+        .thumb-option.selected{border-color:#7c3aed;box-shadow:0 0 0 2px rgba(124,58,237,0.3);}
+        .thumb-option img,.thumb-option canvas{width:100%;height:100%;object-fit:cover;}
+        .thumb-option .label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;font-size:0.6rem;text-align:center;padding:2px;}
+    </style>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="sidebar"></aside>
+        <main class="admin-main">
+            <div class="admin-topbar"><h1>Video Gallery</h1><a href="../index.html" target="_blank" class="view-site">View Public Site &rarr;</a><a href="#" onclick="AdminStore.logout();return false;" style="font-size:0.75rem;background:#fef2f2;color:#ef4444;padding:0.375rem 0.75rem;border-radius:9999px;text-decoration:none;font-weight:500;margin-left:0.5rem;transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+            <div class="admin-content">
+                <div class="a-info blue"><i class="fas fa-video" style="margin-top:0.125rem;flex-shrink:0;"></i><div><p style="font-weight:600;font-size:0.85rem;">Video Gallery</p><p style="font-size:0.8rem;margin-top:0.125rem;">Upload videos directly from your device or paste YouTube/external links. Thumbnails are auto-generated from uploaded videos.</p></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <span style="font-size:0.85rem;color:#64748b;" id="count"></span>
+                    <button class="a-btn a-btn-primary" onclick="openForm()"><i class="fas fa-plus"></i> Add Video</button>
+                </div>
+                <div id="grid"></div>
+            </div>
+        </main>
+    </div>
+    <div class="admin-modal-backdrop" id="modal">
+        <div class="admin-modal" style="max-width:560px;">
+            <h3 id="modal-title">Add Video</h3>
+            <form id="video-form">
+                <input type="hidden" id="f-id">
+                <div class="a-form-group"><label>Title *</label><input type="text" class="a-input" id="f-title" required placeholder="e.g. Annual Day 2026 Highlights"></div>
+                <div class="a-form-group"><label>Description</label><textarea class="a-input" id="f-desc" rows="2" placeholder="Short description"></textarea></div>
+                <div class="a-form-group"><label>Date</label><input type="date" class="a-input" id="f-date"></div>
+
+                <!-- Upload Options -->
+                <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+                    <button type="button" class="a-tab active" id="tab-upload" onclick="switchTab('upload')">Upload Video</button>
+                    <button type="button" class="a-tab" id="tab-url" onclick="switchTab('url')">Paste URL</button>
+                </div>
+
+                <div id="panel-upload">
+                    <div class="video-upload-zone" id="video-drop">
+                        <i class="fas fa-film"></i>
+                        <p><strong>Drag & drop video</strong> or click to browse</p>
+                        <small>Supports MP4, WEBM, MOV</small>
+                        <input type="file" id="f-video-file" accept="video/*" style="display:none;">
+                    </div>
+                    <div id="video-info" style="display:none;margin-top:0.75rem;">
+                        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.625rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:0.5rem;">
+                            <i class="fas fa-check-circle" style="color:#22c55e;"></i>
+                            <span id="video-filename" style="font-size:0.8rem;font-weight:500;color:#166534;"></span>
+                            <span id="video-size" style="font-size:0.7rem;color:#94a3b8;margin-left:auto;"></span>
+                        </div>
+                    </div>
+                    <div id="thumb-section" style="display:none;margin-top:1rem;">
+                        <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:0.375rem;">Auto-Generated Thumbnails (click to select)</label>
+                        <div class="thumb-preview" id="thumb-previews"></div>
+                    </div>
+                </div>
+
+                <div id="panel-url" style="display:none;">
+                    <div class="a-form-group"><label>Video URL * (YouTube, Drive, etc.)</label><input type="url" class="a-input" id="f-url" placeholder="https://youtube.com/watch?v=..."></div>
+                    <div class="a-form-group"><label>Thumbnail URL (optional)</label><input type="text" class="a-input" id="f-thumb-url" placeholder="https://..."></div>
+                </div>
+
+                <input type="hidden" id="f-video-data" value="">
+                <input type="hidden" id="f-thumb-data" value="">
+
+                <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+                    <button type="button" class="a-btn a-btn-outline" style="flex:1;justify-content:center;" onclick="closeForm()">Cancel</button>
+                    <button type="submit" class="a-btn a-btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="admin-store.js"></script>
+    <script>
+        AdminStore.checkAuth();
+        document.getElementById('sidebar').innerHTML = renderAdminSidebar('videos');
+
+        let activeTab = 'upload';
+        const videoDrop = document.getElementById('video-drop');
+        const videoInput = document.getElementById('f-video-file');
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('tab-upload').className = 'a-tab' + (tab === 'upload' ? ' active' : '');
+            document.getElementById('tab-url').className = 'a-tab' + (tab === 'url' ? ' active' : '');
+            document.getElementById('panel-upload').style.display = tab === 'upload' ? '' : 'none';
+            document.getElementById('panel-url').style.display = tab === 'url' ? '' : 'none';
+        }
+
+        // Drag & drop for video
+        videoDrop.addEventListener('click', () => videoInput.click());
+        videoDrop.addEventListener('dragover', e => { e.preventDefault(); videoDrop.classList.add('dragover'); });
+        videoDrop.addEventListener('dragleave', () => videoDrop.classList.remove('dragover'));
+        videoDrop.addEventListener('drop', e => { e.preventDefault(); videoDrop.classList.remove('dragover'); if (e.dataTransfer.files[0]) processVideoFile(e.dataTransfer.files[0]); });
+        videoInput.addEventListener('change', () => { if (videoInput.files[0]) processVideoFile(videoInput.files[0]); });
+
+        function processVideoFile(file) {
+            if (!file.type.startsWith('video/')) { alert('Please select a video file'); return; }
+            var sizeMB = file.size / (1024 * 1024);
+            document.getElementById('video-filename').textContent = file.name;
+            document.getElementById('video-size').textContent = sizeMB.toFixed(1) + ' MB';
+            document.getElementById('video-info').style.display = 'block';
+
+            if (sizeMB > 4) {
+                alert('⚠️ This video is ' + sizeMB.toFixed(1) + 'MB. Files over 4MB may fail to save in browser storage.\n\nRecommendation: Use the "Paste URL" tab instead — upload your video to YouTube, Google Drive, or any hosting service and paste the link.');
+                switchTab('url');
+                return;
+            }
+
+            // Read video as data URL (only for small files)
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('f-video-data').value = e.target.result;
+                extractThumbnails(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function extractThumbnails(videoDataUrl) {
+            const video = document.createElement('video');
+            video.src = videoDataUrl;
+            video.muted = true;
+            video.crossOrigin = 'anonymous';
+
+            video.addEventListener('loadedmetadata', () => {
+                const duration = video.duration;
+                const times = [0.5, duration * 0.25, duration * 0.5, duration * 0.75];
+                const thumbs = [];
+                let captured = 0;
+
+                times.forEach((t, i) => {
+                    const seekTime = Math.min(t, duration - 0.1);
+                    const v2 = document.createElement('video');
+                    v2.src = videoDataUrl;
+                    v2.muted = true;
+                    v2.currentTime = seekTime;
+
+                    v2.addEventListener('seeked', () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 320; canvas.height = 180;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(v2, 0, 0, 320, 180);
+                        thumbs[i] = canvas.toDataURL('image/jpeg', 0.7);
+                        captured++;
+
+                        if (captured === times.length) {
+                            renderThumbnailOptions(thumbs);
+                        }
+                    }, { once: true });
+                });
+            });
+
+            video.addEventListener('error', () => {
+                // If thumbnail extraction fails, just continue without
+                document.getElementById('thumb-section').style.display = 'none';
+            });
+        }
+
+        function renderThumbnailOptions(thumbs) {
+            const container = document.getElementById('thumb-previews');
+            document.getElementById('thumb-section').style.display = 'block';
+            // Auto-select first
+            document.getElementById('f-thumb-data').value = thumbs[0] || '';
+
+            container.innerHTML = thumbs.map((t, i) =>
+                '<div class="thumb-option' + (i === 0 ? ' selected' : '') + '" onclick="selectThumb(this,\'' + i + '\')">' +
+                '<img src="' + t + '"><div class="label">' + ['0s', '25%', '50%', '75%'][i] + '</div></div>'
+            ).join('');
+
+            // Store thumbs globally for selection
+            window._thumbs = thumbs;
+        }
+
+        function selectThumb(el, idx) {
+            document.querySelectorAll('.thumb-option').forEach(t => t.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('f-thumb-data').value = window._thumbs[idx];
+        }
+
+        function openForm(id) {
+            document.getElementById('modal').classList.add('active');
+            switchTab('upload');
+            document.getElementById('video-info').style.display = 'none';
+            document.getElementById('thumb-section').style.display = 'none';
+            document.getElementById('f-video-data').value = '';
+            document.getElementById('f-thumb-data').value = '';
+
+            if (id) {
+                const v = AdminStore.getVideos().find(x => x.id === id);
+                if (!v) return;
+                document.getElementById('modal-title').textContent = 'Edit Video';
+                document.getElementById('f-id').value = v.id;
+                document.getElementById('f-title').value = v.title;
+                document.getElementById('f-desc').value = v.description || '';
+                document.getElementById('f-date').value = v.date || '';
+                if (v.url && !v.url.startsWith('data:')) {
+                    switchTab('url');
+                    document.getElementById('f-url').value = v.url;
+                    document.getElementById('f-thumb-url').value = v.thumbnail || '';
+                } else {
+                    document.getElementById('f-video-data').value = v.url || '';
+                    document.getElementById('f-thumb-data').value = v.thumbnail || '';
+                    if (v.url) {
+                        document.getElementById('video-info').style.display = 'block';
+                        document.getElementById('video-filename').textContent = 'Previously uploaded video';
+                        document.getElementById('video-size').textContent = '';
+                    }
+                }
+            } else {
+                document.getElementById('modal-title').textContent = 'Add Video';
+                document.getElementById('video-form').reset();
+                document.getElementById('f-id').value = '';
+            }
+        }
+        function closeForm() { document.getElementById('modal').classList.remove('active'); }
+
+        document.getElementById('video-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let url, thumbnail;
+            if (activeTab === 'upload') {
+                url = document.getElementById('f-video-data').value;
+                thumbnail = document.getElementById('f-thumb-data').value;
+                if (!url) { alert('Please upload a video file'); return; }
+            } else {
+                url = document.getElementById('f-url').value;
+                thumbnail = document.getElementById('f-thumb-url').value;
+                if (!url) { alert('Please enter a video URL'); return; }
+            }
+
+            const data = AdminStore.getVideos();
+            const editId = document.getElementById('f-id').value;
+            const item = {
+                id: editId || AdminStore.genId(),
+                title: document.getElementById('f-title').value,
+                url: url,
+                thumbnail: thumbnail,
+                description: document.getElementById('f-desc').value,
+                date: document.getElementById('f-date').value || new Date().toISOString().split('T')[0]
+            };
+            if (editId) { const idx = data.findIndex(x => x.id === editId); if (idx !== -1) data[idx] = item; }
+            else { data.unshift(item); }
+            AdminStore.saveVideos(data); closeForm(); render(); showToast(editId ? 'Video updated' : 'Video added');
+        });
+
+        function deleteItem(id) {
+            if (!confirm('Delete this video?')) return;
+            AdminStore.saveVideos(AdminStore.getVideos().filter(x => x.id !== id));
+            render(); showToast('Video deleted');
+        }
+
+        function render() {
+            const data = AdminStore.getVideos();
+            document.getElementById('count').textContent = data.length + ' video(s)';
+            const grid = document.getElementById('grid');
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="a-empty"><i class="fas fa-video"></i><p>No videos yet. Click "Add Video" to upload or link videos.</p></div>';
+                return;
+            }
+            grid.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">' + data.map(v => {
+                const isUploaded = v.url && v.url.startsWith('data:');
+                const thumbBg = v.thumbnail ? 'background-image:url(' + v.thumbnail + ');background-size:cover;background-position:center;' : '';
+                var likes = 0; try { var ld = JSON.parse(localStorage.getItem('dns_likes') || '{}'); likes = ld['video_' + v.id] || 0; } catch(e) {}
+                return '<div class="a-card" style="overflow:hidden;">' +
+                '<div style="aspect-ratio:16/9;background:#1e293b;position:relative;display:flex;align-items:center;justify-content:center;' + thumbBg + '">' +
+                (isUploaded
+                    ? '<a href="#" onclick="playVideo(\'' + v.id + '\');return false;" style="width:50px;height:50px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;color:#1e293b;font-size:1.25rem;"><i class="fas fa-play" style="margin-left:3px;"></i></a>'
+                    : '<a href="' + v.url + '" target="_blank" style="width:50px;height:50px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;color:#1e293b;font-size:1.25rem;"><i class="fas fa-play" style="margin-left:3px;"></i></a>'
+                ) +
+                '<span style="position:absolute;top:0.5rem;left:0.5rem;" class="a-badge ' + (isUploaded ? 'a-badge-green' : 'a-badge-blue') + '">' + (isUploaded ? 'Uploaded' : 'External') + '</span>' +
+                (likes > 0 ? '<span style="position:absolute;top:0.5rem;right:0.5rem;background:rgba(239,68,68,0.9);color:#fff;font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;display:flex;align-items:center;gap:3px;"><i class="fas fa-heart" style="font-size:0.55rem;"></i>' + likes + '</span>' : '') +
+                '</div>' +
+                '<div style="padding:1rem;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+                '<div><h4 style="font-size:0.9rem;font-weight:600;">' + v.title + '</h4>' +
+                (v.description ? '<p style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">' + v.description + '</p>' : '') +
+                (v.date ? '<p style="font-size:0.7rem;color:#94a3b8;margin-top:0.25rem;"><i class="fas fa-calendar" style="margin-right:0.25rem;"></i>' + v.date + '</p>' : '') + '</div>' +
+                '<div style="display:flex;gap:0.25rem;flex-shrink:0;">' +
+                '<button class="a-btn-icon edit" onclick="openForm(\'' + v.id + '\')"><i class="fas fa-edit"></i></button>' +
+                '<button class="a-btn-icon delete" onclick="deleteItem(\'' + v.id + '\')"><i class="fas fa-trash"></i></button>' +
+                '</div></div></div></div>';
+            }).join('') + '</div>';
+        }
+
+        // Play uploaded video in modal
+        function playVideo(id) {
+            const v = AdminStore.getVideos().find(x => x.id === id);
+            if (!v) return;
+            let backdrop = document.getElementById('video-player-modal');
+            if (!backdrop) {
+                backdrop = document.createElement('div');
+                backdrop.id = 'video-player-modal';
+                backdrop.className = 'admin-modal-backdrop';
+                document.body.appendChild(backdrop);
+            }
+            backdrop.innerHTML = '<div style="max-width:720px;width:100%;position:relative;"><button onclick="this.parentNode.parentNode.classList.remove(\'active\')" style="position:absolute;top:-40px;right:0;background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;"><i class="fas fa-times"></i></button><video src="' + v.url + '" controls autoplay style="width:100%;border-radius:0.75rem;box-shadow:0 20px 60px rgba(0,0,0,0.4);"></video></div>';
+            backdrop.classList.add('active');
+            backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.classList.remove('active'); });
+        }
+
+        render();
+    </script>
+</body>
+</html>

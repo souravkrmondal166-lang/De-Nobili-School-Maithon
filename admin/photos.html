@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Gallery | Admin - De Nobili School</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .upload-zone{border:2px dashed #cbd5e1;border-radius:0.75rem;padding:2rem;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc;}
+        .upload-zone:hover,.upload-zone.dragover{border-color:#3b82f6;background:#eff6ff;}
+        .upload-zone i{font-size:2rem;color:#94a3b8;margin-bottom:0.5rem;}
+        .upload-zone p{font-size:0.85rem;color:#64748b;}
+        .upload-zone small{font-size:0.75rem;color:#94a3b8;}
+        .upload-previews{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.75rem;margin-top:1rem;}
+        .upload-thumb{position:relative;aspect-ratio:1;border-radius:0.5rem;overflow:hidden;background:#e2e8f0;}
+        .upload-thumb img{width:100%;height:100%;object-fit:cover;}
+        .upload-thumb .remove{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(220,38,38,0.9);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:0.6rem;display:flex;align-items:center;justify-content:center;}
+        .photo-section{margin-bottom:2rem;}
+        .photo-section-header{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid #e2e8f0;}
+        .photo-section-header h4{font-size:0.9rem;font-weight:600;color:#1e293b;}
+        .photo-section-header span{font-size:0.75rem;color:#94a3b8;}
+        .photo-section-header .count{background:#dbeafe;color:#2563eb;font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:9999px;}
+    </style>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="sidebar"></aside>
+        <main class="admin-main">
+            <div class="admin-topbar"><h1>Photo Gallery</h1><a href="../index.html" target="_blank" class="view-site">View Public Site &rarr;</a><a href="#" onclick="AdminStore.logout();return false;" style="font-size:0.75rem;background:#fef2f2;color:#ef4444;padding:0.375rem 0.75rem;border-radius:9999px;text-decoration:none;font-weight:500;margin-left:0.5rem;transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+            <div class="admin-content">
+                <div class="admin-stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
+                    <div class="a-stat"><div class="a-stat-icon green"><i class="fas fa-images"></i></div><div><h3 id="s-total">0</h3><p>Total Photos</p></div></div>
+                    <div class="a-stat"><div class="a-stat-icon blue"><i class="fas fa-folder"></i></div><div><h3 id="s-cats">0</h3><p>Categories</p></div></div>
+                    <div class="a-stat"><div class="a-stat-icon gold"><i class="fas fa-calendar"></i></div><div><h3 id="s-sections">0</h3><p>Upload Batches</p></div></div>
+                </div>
+
+                <!-- Multi Upload Card -->
+                <div class="a-card" style="margin-bottom:1.5rem;">
+                    <div class="a-card-header"><h3><i class="fas fa-cloud-upload-alt" style="color:#3b82f6;margin-right:0.5rem;"></i>Upload Multiple Photos</h3></div>
+                    <div class="a-card-body">
+                        <div class="a-form-row">
+                            <div class="a-form-group"><label>Batch Title *</label><input type="text" class="a-input" id="batch-title" placeholder="e.g. Annual Day 2026 Photos"></div>
+                            <div class="a-form-group"><label>Category *</label>
+                                <select class="a-input" id="batch-category"><option value="">Select</option><option>Campus</option><option>Academics</option><option>Sports</option><option>Events</option><option>Cultural</option><option>Celebrations</option></select>
+                            </div>
+                        </div>
+                        <div class="upload-zone" id="drop-zone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p><strong>Drag & drop photos here</strong> or click to browse</p>
+                            <small>Supports JPG, PNG, WEBP — Multiple files allowed</small>
+                            <input type="file" id="multi-files" accept="image/*" multiple style="display:none;">
+                        </div>
+                        <div class="upload-previews" id="upload-previews"></div>
+                        <div id="upload-actions" style="display:none;margin-top:1rem;display:flex;gap:0.75rem;align-items:center;">
+                            <button class="a-btn a-btn-primary" onclick="uploadBatch()"><i class="fas fa-upload"></i> Upload All (<span id="file-count">0</span>)</button>
+                            <button class="a-btn a-btn-outline" onclick="clearPending()"><i class="fas fa-times"></i> Clear</button>
+                            <span id="upload-status" style="font-size:0.8rem;color:#64748b;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk URL Upload -->
+                <div class="a-card" style="margin-bottom:1.5rem;">
+                    <div class="a-card-header"><h3><i class="fas fa-link" style="color:#8b5cf6;margin-right:0.5rem;"></i>Bulk URL Upload</h3></div>
+                    <div class="a-card-body">
+                        <p style="font-size:0.8rem;color:#64748b;margin-bottom:0.75rem;">Paste multiple image URLs (one per line) to batch-add photos to a gallery section.</p>
+                        <div class="a-form-row">
+                            <div class="a-form-group"><label>Batch Title *</label><input type="text" class="a-input" id="url-batch-title" placeholder="e.g. Sports Day 2026"></div>
+                            <div class="a-form-group"><label>Category *</label>
+                                <select class="a-input" id="url-batch-category"><option value="">Select</option><option>Campus</option><option>Academics</option><option>Sports</option><option>Events</option><option>Cultural</option><option>Celebrations</option></select>
+                            </div>
+                        </div>
+                        <div class="a-form-group"><label>Image URLs (one per line)</label>
+                            <textarea class="a-input" id="url-batch-urls" rows="5" placeholder="https://example.com/photo1.jpg&#10;https://example.com/photo2.jpg&#10;https://example.com/photo3.jpg"></textarea>
+                        </div>
+                        <button class="a-btn a-btn-primary" onclick="uploadBulkUrls()"><i class="fas fa-link"></i> Add All URLs</button>
+                    </div>
+                </div>
+                <!-- Filter tabs -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+                    <div class="a-tabs" id="filters" style="margin-bottom:0;"></div>
+                    <button class="a-btn a-btn-primary" onclick="openSingleForm()"><i class="fas fa-plus"></i> Add Single Photo</button>
+                </div>
+
+                <!-- Gallery grouped by sections -->
+                <div id="gallery-sections"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Single photo modal -->
+    <div class="admin-modal-backdrop" id="modal">
+        <div class="admin-modal">
+            <h3 id="modal-title">Add Photo</h3>
+            <form id="photo-form">
+                <input type="hidden" id="f-id">
+                <div class="a-form-group"><label>Title *</label><input type="text" class="a-input" id="f-title" required></div>
+                <div class="a-form-row">
+                    <div class="a-form-group"><label>Category</label><select class="a-input" id="f-category"><option>Campus</option><option>Academics</option><option>Sports</option><option>Events</option><option>Cultural</option><option>Celebrations</option></select></div>
+                    <div class="a-form-group"><label>Date</label><input type="date" class="a-input" id="f-date"></div>
+                </div>
+                <div class="a-form-group"><label>Caption</label><input type="text" class="a-input" id="f-caption"></div>
+                <div class="a-form-group"><label>Upload or URL</label>
+                    <input type="file" accept="image/*" id="f-file" style="margin-bottom:0.5rem;font-size:0.8rem;">
+                    <input type="text" class="a-input" id="f-url" placeholder="Or paste URL">
+                </div>
+                <input type="hidden" id="f-image-data">
+                <div id="preview" style="display:none;margin-bottom:1rem;border-radius:0.5rem;overflow:hidden;"><img id="preview-img" style="width:100%;max-height:180px;object-fit:cover;"></div>
+                <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+                    <button type="button" class="a-btn a-btn-outline" style="flex:1;justify-content:center;" onclick="closeForm()">Cancel</button>
+                    <button type="submit" class="a-btn a-btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin-store.js"></script>
+    <script>
+        AdminStore.checkAuth();
+        document.getElementById('sidebar').innerHTML = renderAdminSidebar('photos');
+
+        let pendingFiles = [];
+        let currentFilter = 'All';
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('multi-files');
+
+        // --- Drag & Drop ---
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault(); dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+        function handleFiles(fileList) {
+            Array.from(fileList).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = e => {
+                    pendingFiles.push({ name: file.name, dataUrl: e.target.result });
+                    renderPreviews();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderPreviews() {
+            const container = document.getElementById('upload-previews');
+            container.innerHTML = pendingFiles.map((f, i) =>
+                '<div class="upload-thumb"><img src="' + f.dataUrl + '"><button class="remove" onclick="removePending(' + i + ')"><i class="fas fa-times"></i></button></div>'
+            ).join('');
+            document.getElementById('file-count').textContent = pendingFiles.length;
+            document.getElementById('upload-actions').style.display = pendingFiles.length > 0 ? 'flex' : 'none';
+        }
+
+        function removePending(i) { pendingFiles.splice(i, 1); renderPreviews(); }
+        function clearPending() { pendingFiles = []; renderPreviews(); }
+
+        function uploadBatch() {
+            const title = document.getElementById('batch-title').value.trim();
+            const cat = document.getElementById('batch-category').value;
+            if (!title) { alert('Please enter a batch title'); return; }
+            if (!cat) { alert('Please select a category'); return; }
+            if (pendingFiles.length === 0) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            const data = AdminStore.getPhotos();
+            pendingFiles.forEach((f, i) => {
+                data.unshift({
+                    id: AdminStore.genId() + i,
+                    title: title + (pendingFiles.length > 1 ? ' (' + (i + 1) + ')' : ''),
+                    url: f.dataUrl,
+                    category: cat,
+                    caption: '',
+                    date: today,
+                    batchTitle: title
+                });
+            });
+            AdminStore.savePhotos(data);
+            pendingFiles = [];
+            renderPreviews();
+            document.getElementById('batch-title').value = '';
+            document.getElementById('batch-category').value = '';
+            render();
+            showToast(data.length + ' photos uploaded');
+        }
+
+        // --- Single Photo Modal ---
+        function openSingleForm(id) {
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('preview').style.display = 'none';
+            if (id) {
+                const p = AdminStore.getPhotos().find(x => x.id === id);
+                if (!p) return;
+                document.getElementById('modal-title').textContent = 'Edit Photo';
+                document.getElementById('f-id').value = p.id;
+                document.getElementById('f-title').value = p.title;
+                document.getElementById('f-category').value = p.category || 'Campus';
+                document.getElementById('f-date').value = p.date || '';
+                document.getElementById('f-caption').value = p.caption || '';
+                document.getElementById('f-url').value = (p.url && !p.url.startsWith('data:')) ? p.url : '';
+                document.getElementById('f-image-data').value = (p.url && p.url.startsWith('data:')) ? p.url : '';
+                if (p.url) { document.getElementById('preview-img').src = p.url; document.getElementById('preview').style.display = 'block'; }
+            } else {
+                document.getElementById('modal-title').textContent = 'Add Photo';
+                document.getElementById('photo-form').reset();
+                document.getElementById('f-id').value = '';
+                document.getElementById('f-image-data').value = '';
+            }
+        }
+        function closeForm() { document.getElementById('modal').classList.remove('active'); }
+
+        document.getElementById('f-file').addEventListener('change', function() {
+            fileToDataURL(this, url => {
+                document.getElementById('f-image-data').value = url;
+                document.getElementById('f-url').value = '';
+                document.getElementById('preview-img').src = url;
+                document.getElementById('preview').style.display = 'block';
+            });
+        });
+
+        document.getElementById('photo-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('f-image-data').value || document.getElementById('f-url').value;
+            if (!url) { alert('Upload or enter a photo URL'); return; }
+            const data = AdminStore.getPhotos();
+            const editId = document.getElementById('f-id').value;
+            const item = {
+                id: editId || AdminStore.genId(),
+                title: document.getElementById('f-title').value,
+                category: document.getElementById('f-category').value,
+                date: document.getElementById('f-date').value || new Date().toISOString().split('T')[0],
+                caption: document.getElementById('f-caption').value,
+                url: url,
+                batchTitle: document.getElementById('f-title').value
+            };
+            if (editId) { const idx = data.findIndex(x => x.id === editId); if (idx !== -1) data[idx] = item; }
+            else { data.unshift(item); }
+            AdminStore.savePhotos(data); closeForm(); render(); showToast(editId ? 'Photo updated' : 'Photo added');
+        });
+
+        function deleteItem(id) {
+            if (!confirm('Delete this photo?')) return;
+            AdminStore.savePhotos(AdminStore.getPhotos().filter(x => x.id !== id));
+            render(); showToast('Photo deleted');
+        }
+
+        function setFilter(cat) { currentFilter = cat; render(); }
+
+        // --- Render grouped by date/batch ---
+        function render() {
+            const data = AdminStore.getPhotos();
+            const cats = [...new Set(data.map(p => p.category).filter(Boolean))];
+            const batchTitles = [...new Set(data.map(p => p.batchTitle || p.title).filter(Boolean))];
+
+            document.getElementById('s-total').textContent = data.length;
+            document.getElementById('s-cats').textContent = cats.length;
+            document.getElementById('s-sections').textContent = batchTitles.length;
+
+            document.getElementById('filters').innerHTML = ['All', ...cats].map(c =>
+                '<button class="a-tab' + (currentFilter === c ? ' active' : '') + '" onclick="setFilter(\'' + c + '\')">' + c + '</button>'
+            ).join('');
+
+            const filtered = currentFilter === 'All' ? data : data.filter(p => p.category === currentFilter);
+
+            // Group by batchTitle or date
+            const groups = {};
+            filtered.forEach(p => {
+                const key = p.batchTitle || p.date || 'Uncategorized';
+                if (!groups[key]) groups[key] = { date: p.date || '', photos: [] };
+                groups[key].photos.push(p);
+            });
+
+            const container = document.getElementById('gallery-sections');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="a-empty"><i class="fas fa-images"></i><p>No photos yet. Upload some above!</p></div>';
+                return;
+            }
+
+            container.innerHTML = Object.entries(groups).map(([title, group]) =>
+                '<div class="photo-section"><div class="photo-section-header">' +
+                '<i class="fas fa-folder-open" style="color:#3b82f6;"></i>' +
+                '<h4>' + title + '</h4>' +
+                '<span>' + (group.date || '') + '</span>' +
+                '<span class="count">' + group.photos.length + ' photo' + (group.photos.length !== 1 ? 's' : '') + '</span>' +
+                '</div><div class="a-photo-grid">' +
+                group.photos.map(p => {
+                    var likes = 0; try { var ld = JSON.parse(localStorage.getItem('dns_likes') || '{}'); likes = ld['photo_' + p.id] || 0; } catch(e) {}
+                    return '<div class="a-photo-item" onclick="openSingleForm(\'' + p.id + '\')">' +
+                    '<img src="' + p.url + '" onerror="this.style.display=\'none\'">' +
+                    '<div class="a-photo-item-overlay"><h4>' + p.title + '</h4><span>' + (p.category || '') + '</span></div>' +
+                    (likes > 0 ? '<span style="position:absolute;top:6px;left:6px;background:rgba(239,68,68,0.9);color:#fff;font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;display:flex;align-items:center;gap:3px;z-index:2;"><i class="fas fa-heart" style="font-size:0.55rem;"></i>' + likes + '</span>' : '') +
+                    '<button class="a-photo-delete" onclick="event.stopPropagation();deleteItem(\'' + p.id + '\')"><i class="fas fa-trash"></i></button></div>'
+                }).join('') + '</div></div>'
+            ).join('');
+        }
+        render();
+
+        function uploadBulkUrls() {
+            var title = document.getElementById('url-batch-title').value.trim();
+            var cat = document.getElementById('url-batch-category').value;
+            var rawUrls = document.getElementById('url-batch-urls').value.trim();
+            if (!title) { alert('Enter a batch title'); return; }
+            if (!cat) { alert('Select a category'); return; }
+            if (!rawUrls) { alert('Paste at least one URL'); return; }
+
+            var urls = rawUrls.split('\n').map(function(u) { return u.trim(); }).filter(function(u) { return u.length > 0; });
+            if (urls.length === 0) { alert('No valid URLs found'); return; }
+
+            var data = AdminStore.getPhotos();
+            var today = new Date().toISOString().split('T')[0];
+            urls.forEach(function(url, i) {
+                data.unshift({
+                    id: AdminStore.genId() + i,
+                    title: title + (urls.length > 1 ? ' (' + (i + 1) + ')' : ''),
+                    url: url,
+                    category: cat,
+                    caption: '',
+                    date: today,
+                    batchTitle: title
+                });
+            });
+            AdminStore.savePhotos(data);
+            document.getElementById('url-batch-title').value = '';
+            document.getElementById('url-batch-category').value = '';
+            document.getElementById('url-batch-urls').value = '';
+            render();
+            showToast(urls.length + ' photos added from URLs!');
+        }
+    </script>
+</body>
+</html>

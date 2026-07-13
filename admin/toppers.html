@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICSE/ISC Toppers | Admin - De Nobili School</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .topper-card{display:flex;align-items:center;gap:1rem;padding:0.875rem 1.25rem;border-bottom:1px solid #f1f5f9;transition:background 0.15s;}
+        .topper-card:hover{background:#f8fafc;}
+        .topper-card:last-child{border-bottom:none;}
+        .topper-photo{width:48px;height:48px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+        .topper-photo img{width:100%;height:100%;object-fit:cover;}
+        .rank-badge{min-width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;}
+        .rank-1{background:#fef3c7;color:#b45309;border:2px solid #f59e0b;}
+        .rank-2{background:#f1f5f9;color:#475569;border:2px solid #94a3b8;}
+        .rank-3{background:#fef2f2;color:#b91c1c;border:2px solid #f87171;}
+        .rank-other{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;}
+        .year-section{margin-bottom:2rem;}
+        .year-header{display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1.25rem;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border-radius:0.75rem 0.75rem 0 0;}
+        .year-header h3{font-size:1rem;font-weight:700;}
+        .year-header .count{background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:9999px;font-size:0.75rem;}
+    </style>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="sidebar"></aside>
+        <main class="admin-main">
+            <div class="admin-topbar"><h1>ICSE / ISC Toppers</h1><a href="../index.html" target="_blank" class="view-site">View Public Site &rarr;</a><a href="#" onclick="AdminStore.logout();return false;" style="font-size:0.75rem;background:#fef2f2;color:#ef4444;padding:0.375rem 0.75rem;border-radius:9999px;text-decoration:none;font-weight:500;margin-left:0.5rem;"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+            <div class="admin-content">
+                <div class="a-info blue"><i class="fas fa-trophy" style="margin-top:0.125rem;flex-shrink:0;"></i><div><p style="font-weight:600;font-size:0.85rem;">Achievement Toppers</p><p style="font-size:0.8rem;margin-top:0.125rem;">Manage ICSE and ISC toppers by academic year. They appear on the ICSE Toppers and ISC Toppers pages, organized by year.</p></div></div>
+
+                <!-- Stats -->
+                <div class="admin-stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
+                    <div class="a-stat"><div class="a-stat-icon gold"><i class="fas fa-trophy"></i></div><div><h3 id="s-total">0</h3><p>Total Toppers</p></div></div>
+                    <div class="a-stat"><div class="a-stat-icon blue"><i class="fas fa-graduation-cap"></i></div><div><h3 id="s-icse">0</h3><p>ICSE Toppers</p></div></div>
+                    <div class="a-stat"><div class="a-stat-icon purple"><i class="fas fa-award"></i></div><div><h3 id="s-isc">0</h3><p>ISC Toppers</p></div></div>
+                </div>
+
+                <!-- Tab: ICSE / ISC -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+                    <div class="a-tabs" style="margin-bottom:0;">
+                        <button class="a-tab active" id="tab-icse" onclick="setExam('ICSE')">ICSE (Class 10)</button>
+                        <button class="a-tab" id="tab-isc" onclick="setExam('ISC')">ISC (Class 12)</button>
+                    </div>
+                    <button class="a-btn a-btn-primary" onclick="openForm()"><i class="fas fa-plus"></i> Add Topper</button>
+                </div>
+
+                <div id="toppers-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="admin-modal-backdrop" id="modal">
+        <div class="admin-modal" style="max-width:520px;">
+            <h3 id="modal-title">Add Topper</h3>
+            <form id="topper-form">
+                <input type="hidden" id="f-id">
+                <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+                    <div id="photo-preview" style="width:64px;height:64px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:3px solid #f59e0b;">
+                        <i class="fas fa-user-graduate" style="font-size:1.5rem;color:#b45309;"></i>
+                    </div>
+                    <div><label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:0.25rem;">Photo</label><input type="file" accept="image/*" id="f-photo-file" style="font-size:0.75rem;"></div>
+                </div>
+                <input type="hidden" id="f-photo" value="">
+                <div class="a-form-row">
+                    <div class="a-form-group"><label>Student Name *</label><input type="text" class="a-input" id="f-name" required placeholder="e.g. Rahul Kumar"></div>
+                    <div class="a-form-group"><label>Percentage / Marks *</label><input type="text" class="a-input" id="f-marks" required placeholder="e.g. 98.4%"></div>
+                </div>
+                <div class="a-form-row">
+                    <div class="a-form-group"><label>Exam Type *</label>
+                        <select class="a-input" id="f-exam"><option>ICSE</option><option>ISC</option></select>
+                    </div>
+                    <div class="a-form-group"><label>Academic Year *</label>
+                        <select class="a-input" id="f-year"></select>
+                    </div>
+                </div>
+                <div class="a-form-row">
+                    <div class="a-form-group"><label>Rank</label><input type="number" class="a-input" id="f-rank" min="1" placeholder="e.g. 1"></div>
+                    <div class="a-form-group"><label>Stream (ISC only)</label>
+                        <select class="a-input" id="f-stream"><option value="">N/A</option><option>Science</option><option>Commerce</option><option>Arts</option></select>
+                    </div>
+                </div>
+                <div class="a-form-group"><label>Subjects / Details (optional)</label><input type="text" class="a-input" id="f-subjects" placeholder="e.g. School Topper, 100 in Maths"></div>
+                <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+                    <button type="button" class="a-btn a-btn-outline" style="flex:1;justify-content:center;" onclick="closeForm()">Cancel</button>
+                    <button type="submit" class="a-btn a-btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin-store.js"></script>
+    <script>
+        AdminStore.checkAuth();
+        document.getElementById('sidebar').innerHTML = renderAdminSidebar('toppers');
+
+        let activeExam = 'ICSE';
+
+        // Populate year dropdown
+        (function() {
+            const sel = document.getElementById('f-year');
+            const current = new Date().getFullYear();
+            for (let y = current; y >= current - 10; y--) {
+                sel.innerHTML += '<option value="' + y + '">' + y + '</option>';
+            }
+        })();
+
+        document.getElementById('f-photo-file').addEventListener('change', function() {
+            fileToDataURL(this, url => {
+                document.getElementById('f-photo').value = url;
+                document.getElementById('photo-preview').innerHTML = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;">';
+            });
+        });
+
+        function setExam(exam) {
+            activeExam = exam;
+            document.getElementById('tab-icse').className = 'a-tab' + (exam === 'ICSE' ? ' active' : '');
+            document.getElementById('tab-isc').className = 'a-tab' + (exam === 'ISC' ? ' active' : '');
+            render();
+        }
+
+        function openForm(id) {
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('f-exam').value = activeExam;
+            if (id) {
+                const t = AdminStore.getToppers().find(x => x.id === id);
+                if (!t) return;
+                document.getElementById('modal-title').textContent = 'Edit Topper';
+                document.getElementById('f-id').value = t.id;
+                document.getElementById('f-name').value = t.name;
+                document.getElementById('f-marks').value = t.marks;
+                document.getElementById('f-exam').value = t.exam;
+                document.getElementById('f-year').value = t.year;
+                document.getElementById('f-rank').value = t.rank || '';
+                document.getElementById('f-stream').value = t.stream || '';
+                document.getElementById('f-subjects').value = t.subjects || '';
+                document.getElementById('f-photo').value = t.photo || '';
+                if (t.photo) document.getElementById('photo-preview').innerHTML = '<img src="' + t.photo + '" style="width:100%;height:100%;object-fit:cover;">';
+            } else {
+                document.getElementById('modal-title').textContent = 'Add Topper';
+                document.getElementById('topper-form').reset();
+                document.getElementById('f-id').value = '';
+                document.getElementById('f-photo').value = '';
+                document.getElementById('f-exam').value = activeExam;
+                document.getElementById('photo-preview').innerHTML = '<i class="fas fa-user-graduate" style="font-size:1.5rem;color:#b45309;"></i>';
+            }
+        }
+        function closeForm() { document.getElementById('modal').classList.remove('active'); }
+
+        document.getElementById('topper-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const data = AdminStore.getToppers();
+            const editId = document.getElementById('f-id').value;
+            const item = {
+                id: editId || AdminStore.genId(),
+                name: document.getElementById('f-name').value,
+                marks: document.getElementById('f-marks').value,
+                exam: document.getElementById('f-exam').value,
+                year: document.getElementById('f-year').value,
+                rank: parseInt(document.getElementById('f-rank').value) || 0,
+                stream: document.getElementById('f-stream').value,
+                subjects: document.getElementById('f-subjects').value,
+                photo: document.getElementById('f-photo').value
+            };
+            if (editId) { const idx = data.findIndex(x => x.id === editId); if (idx !== -1) data[idx] = item; }
+            else { data.push(item); }
+            AdminStore.saveToppers(data); closeForm(); render(); showToast(editId ? 'Topper updated' : 'Topper added');
+        });
+
+        function deleteItem(id) {
+            if (!confirm('Remove this topper?')) return;
+            AdminStore.saveToppers(AdminStore.getToppers().filter(x => x.id !== id));
+            render(); showToast('Topper removed');
+        }
+
+        function render() {
+            const all = AdminStore.getToppers();
+            const icse = all.filter(t => t.exam === 'ICSE');
+            const isc = all.filter(t => t.exam === 'ISC');
+            document.getElementById('s-total').textContent = all.length;
+            document.getElementById('s-icse').textContent = icse.length;
+            document.getElementById('s-isc').textContent = isc.length;
+
+            const filtered = all.filter(t => t.exam === activeExam);
+
+            // Group by year
+            const years = {};
+            filtered.forEach(t => {
+                const y = t.year || 'Unknown';
+                if (!years[y]) years[y] = [];
+                years[y].push(t);
+            });
+            // Sort years descending
+            const sortedYears = Object.keys(years).sort((a, b) => b - a);
+
+            const container = document.getElementById('toppers-list');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="a-empty"><i class="fas fa-trophy"></i><p>No ' + activeExam + ' toppers yet. Click "Add Topper" to get started.</p></div>';
+                return;
+            }
+
+            container.innerHTML = sortedYears.map(year => {
+                const list = years[year].sort((a, b) => (a.rank || 999) - (b.rank || 999));
+                return '<div class="year-section">' +
+                    '<div class="year-header"><i class="fas fa-calendar-alt"></i><h3>' + activeExam + ' Toppers ' + year + '</h3><span class="count">' + list.length + ' student' + (list.length !== 1 ? 's' : '') + '</span></div>' +
+                    '<div class="a-card" style="border-radius:0 0 0.75rem 0.75rem;border-top:none;">' +
+                    list.map(t => {
+                        const rankClass = t.rank === 1 ? 'rank-1' : t.rank === 2 ? 'rank-2' : t.rank === 3 ? 'rank-3' : 'rank-other';
+                        return '<div class="topper-card">' +
+                            '<div class="rank-badge ' + rankClass + '">' + (t.rank || '-') + '</div>' +
+                            '<div class="topper-photo">' + (t.photo ? '<img src="' + t.photo + '">' : '<i class="fas fa-user-graduate" style="color:#3b82f6;"></i>') + '</div>' +
+                            '<div style="flex:1;min-width:0;">' +
+                            '<h4 style="font-size:0.9rem;font-weight:600;">' + t.name + '</h4>' +
+                            '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.25rem;">' +
+                            '<span class="a-badge a-badge-green"><i class="fas fa-percent" style="margin-right:0.25rem;"></i>' + t.marks + '</span>' +
+                            (t.stream ? '<span class="a-badge a-badge-purple">' + t.stream + '</span>' : '') +
+                            '</div>' +
+                            (t.subjects ? '<p style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">' + t.subjects + '</p>' : '') +
+                            '</div>' +
+                            '<div style="display:flex;gap:0.25rem;flex-shrink:0;">' +
+                            '<button class="a-btn-icon edit" onclick="openForm(\'' + t.id + '\')"><i class="fas fa-edit"></i></button>' +
+                            '<button class="a-btn-icon delete" onclick="deleteItem(\'' + t.id + '\')"><i class="fas fa-trash"></i></button>' +
+                            '</div></div>';
+                    }).join('') + '</div></div>';
+            }).join('');
+        }
+        render();
+    </script>
+</body>
+</html>

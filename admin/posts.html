@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News & Posts | Admin - De Nobili School</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="sidebar"></aside>
+        <main class="admin-main">
+            <div class="admin-topbar"><h1>News & Posts</h1><a href="../index.html" target="_blank" class="view-site">View Public Site &rarr;</a><a href="#" onclick="AdminStore.logout();return false;" style="font-size:0.75rem;background:#fef2f2;color:#ef4444;padding:0.375rem 0.75rem;border-radius:9999px;text-decoration:none;font-weight:500;margin-left:0.5rem;transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+            <div class="admin-content">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
+                    <div style="display:flex;gap:0.5rem;" id="badges"></div>
+                    <button class="a-btn a-btn-primary" onclick="openForm()"><i class="fas fa-pen"></i> Write Post</button>
+                </div>
+                <div class="a-card">
+                    <div style="overflow-x:auto;">
+                        <table class="a-table"><thead><tr><th>Title</th><th>Category</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="table"></tbody></table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div class="admin-modal-backdrop" id="modal">
+        <div class="admin-modal" style="max-width:600px;">
+            <h3 id="modal-title">Write Post</h3>
+            <form id="post-form">
+                <input type="hidden" id="f-id">
+                <div class="a-form-group"><label>Title *</label><input type="text" class="a-input" id="f-title" required placeholder="e.g. Annual Sports Day 2026"></div>
+                <div class="a-form-row">
+                    <div class="a-form-group"><label>Category *</label>
+                        <select class="a-input" id="f-category" required><option value="">Select</option><option>News</option><option>Events</option><option>Announcements</option><option>Achievements</option><option>Academics</option></select>
+                    </div>
+                    <div class="a-form-group"><label>Date *</label><input type="date" class="a-input" id="f-date" required></div>
+                </div>
+                <div class="a-form-group"><label>Content *</label><textarea class="a-input" id="f-content" rows="6" required placeholder="Write your post content here..."></textarea></div>
+                <div class="a-form-group"><label>Image URL (optional)</label><input type="text" class="a-input" id="f-image" placeholder="https://..."></div>
+                <div class="a-form-group">
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="f-published" checked> Publish immediately
+                    </label>
+                </div>
+                <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+                    <button type="button" class="a-btn a-btn-outline" style="flex:1;justify-content:center;" onclick="closeForm()">Cancel</button>
+                    <button type="submit" class="a-btn a-btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="admin-store.js"></script>
+    <script>
+        AdminStore.checkAuth();
+        document.getElementById('sidebar').innerHTML = renderAdminSidebar('posts');
+
+        function openForm(id) {
+            document.getElementById('modal').classList.add('active');
+            if (id) {
+                const p = AdminStore.getPosts().find(x => x.id === id);
+                if (!p) return;
+                document.getElementById('modal-title').textContent = 'Edit Post';
+                document.getElementById('f-id').value = p.id;
+                document.getElementById('f-title').value = p.title;
+                document.getElementById('f-category').value = p.category;
+                document.getElementById('f-date').value = p.date;
+                document.getElementById('f-content').value = p.content;
+                document.getElementById('f-image').value = p.image || '';
+                document.getElementById('f-published').checked = p.published;
+            } else {
+                document.getElementById('modal-title').textContent = 'Write Post';
+                document.getElementById('post-form').reset();
+                document.getElementById('f-id').value = '';
+                document.getElementById('f-published').checked = true;
+            }
+        }
+        function closeForm() { document.getElementById('modal').classList.remove('active'); }
+
+        document.getElementById('post-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const data = AdminStore.getPosts();
+            const editId = document.getElementById('f-id').value;
+            const item = { id: editId || AdminStore.genId(), title: document.getElementById('f-title').value, category: document.getElementById('f-category').value, date: document.getElementById('f-date').value, content: document.getElementById('f-content').value, image: document.getElementById('f-image').value, published: document.getElementById('f-published').checked };
+            if (editId) { const idx = data.findIndex(x => x.id === editId); if (idx !== -1) data[idx] = item; }
+            else { data.unshift(item); }
+            AdminStore.savePosts(data); closeForm(); render(); showToast(editId ? 'Post updated' : 'Post published');
+        });
+
+        function togglePublish(id) {
+            const data = AdminStore.getPosts().map(p => p.id === id ? {...p, published: !p.published} : p);
+            AdminStore.savePosts(data); render();
+        }
+
+        function deleteItem(id) {
+            if (!confirm('Delete this post?')) return;
+            AdminStore.savePosts(AdminStore.getPosts().filter(x => x.id !== id));
+            render(); showToast('Post deleted');
+        }
+
+        function render() {
+            const data = AdminStore.getPosts();
+            const published = data.filter(p => p.published).length;
+            const drafts = data.length - published;
+            document.getElementById('badges').innerHTML =
+                '<span class="a-badge a-badge-green"><i class="fas fa-check-circle" style="margin-right:0.25rem;"></i>' + published + ' published</span>' +
+                '<span class="a-badge a-badge-gray"><i class="fas fa-clock" style="margin-right:0.25rem;"></i>' + drafts + ' drafts</span>';
+
+            const table = document.getElementById('table');
+            if (data.length === 0) {
+                table.innerHTML = '<tr><td colspan="5"><div class="a-empty"><i class="fas fa-newspaper"></i><p>No posts yet. Click "Write Post" to get started.</p></div></td></tr>';
+                return;
+            }
+            table.innerHTML = data.map(p =>
+                '<tr><td><strong>' + p.title + '</strong><br><span style="font-size:0.75rem;color:#94a3b8;">' + (p.content || '').substring(0, 60) + '...</span></td>' +
+                '<td><span class="a-badge a-badge-blue">' + p.category + '</span></td>' +
+                '<td style="white-space:nowrap;">' + p.date + '</td>' +
+                '<td><span class="a-badge ' + (p.published ? 'a-badge-green' : 'a-badge-gray') + '">' + (p.published ? 'Published' : 'Draft') + '</span></td>' +
+                '<td style="white-space:nowrap;">' +
+                '<button class="a-btn-icon edit" onclick="openForm(\'' + p.id + '\')"><i class="fas fa-edit"></i></button>' +
+                '<button class="a-btn-icon toggle" onclick="togglePublish(\'' + p.id + '\')" title="' + (p.published ? 'Unpublish' : 'Publish') + '"><i class="fas ' + (p.published ? 'fa-eye-slash' : 'fa-eye') + '"></i></button>' +
+                '<button class="a-btn-icon delete" onclick="deleteItem(\'' + p.id + '\')"><i class="fas fa-trash"></i></button></td></tr>'
+            ).join('');
+        }
+        render();
+    </script>
+</body>
+</html>
